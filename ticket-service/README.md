@@ -1,3 +1,3 @@
-﻿# ticket-service
+# ticket-service
 
 Сервис обработки заявок.

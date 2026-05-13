@@ -14,11 +14,11 @@ public class AdminBootstrapConfig {
     @Bean
     CommandLineRunner bootstrapAdmin(UserRepository userRepository, PasswordEncoder encoder) {
         return args -> {
+            // Поддерживаем старый и новый email администратора для плавного перехода.
             if (!userRepository.existsByUsername("admin")) {
-                // Создаем администратора один раз при первом запуске.
                 userRepository.save(User.builder()
                         .username("admin")
-                        .email("admin@helpdesk.local")
+                        .email("admin@unithread.local")
                         .passwordHash(encoder.encode("admin123"))
                         .role(Role.ADMIN)
                         .banned(false)

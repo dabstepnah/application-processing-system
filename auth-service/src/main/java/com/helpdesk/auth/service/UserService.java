@@ -26,7 +26,6 @@ public class UserService {
         this.jwtService = jwtService;
     }
 
-    // Регистрация нового пользователя с базовыми проверками уникальности.
     public AuthResponse register(RegisterRequest request) {
         if (userRepository.existsByUsername(request.username())) {
             throw new BadRequestException("Пользователь с таким username уже существует");
@@ -44,23 +43,22 @@ public class UserService {
                 .build();
 
         User saved = userRepository.save(user);
-        String token = jwtService.generateToken(saved.getId(), saved.getUsername(), saved.getRole());
+        String token = jwtService.generateToken(saved.getId(), saved.getUsername(), saved.getRole(), saved.isBanned());
         return new AuthResponse(token, saved.getId(), saved.getUsername(), saved.getRole());
     }
 
-    // Авторизация по username/password и выдача JWT.
     public AuthResponse login(LoginRequest request) {
         User user = userRepository.findByUsername(request.username())
-                .orElseThrow(() -> new UnauthorizedException("Неверные учетные данные"));
+                .orElseThrow(() -> new UnauthorizedException("Неверный логин или пароль"));
 
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
-            throw new UnauthorizedException("Неверные учетные данные");
+            throw new UnauthorizedException("Неверный логин или пароль");
         }
         if (user.isBanned()) {
             throw new UnauthorizedException("Пользователь заблокирован");
         }
 
-        String token = jwtService.generateToken(user.getId(), user.getUsername(), user.getRole());
+        String token = jwtService.generateToken(user.getId(), user.getUsername(), user.getRole(), user.isBanned());
         return new AuthResponse(token, user.getId(), user.getUsername(), user.getRole());
     }
 

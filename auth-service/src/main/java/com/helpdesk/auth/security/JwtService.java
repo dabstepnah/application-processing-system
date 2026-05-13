@@ -9,6 +9,8 @@ import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.Date;
 
@@ -20,16 +22,18 @@ public class JwtService {
 
     public JwtService(@Value("${app.jwt.secret}") String secret,
                       @Value("${app.jwt.expiration-ms:86400000}") long expirationMs) {
-        this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+        this.key = Keys.hmacShaKeyFor(sha256(secret));
         this.expirationMs = expirationMs;
     }
 
-    public String generateToken(Long userId, String username, Role role) {
+    // Токен хранит минимум данных для проверки прав в других сервисах.
+    public String generateToken(Long userId, String username, Role role, boolean banned) {
         Instant now = Instant.now();
         return Jwts.builder()
                 .subject(username)
                 .claim("userId", userId)
                 .claim("role", role.name())
+                .claim("banned", banned)
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(now.plusMillis(expirationMs)))
                 .signWith(key)
@@ -38,5 +42,13 @@ public class JwtService {
 
     public Claims parseToken(String token) {
         return Jwts.parser().verifyWith(key).build().parseSignedClaims(token).getPayload();
+    }
+
+    private byte[] sha256(String value) {
+        try {
+            return MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8));
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 недоступен", e);
+        }
     }
 }

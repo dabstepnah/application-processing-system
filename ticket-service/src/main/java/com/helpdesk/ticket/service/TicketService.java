@@ -1,10 +1,12 @@
 package com.helpdesk.ticket.service;
 
 import com.helpdesk.ticket.dto.*;
+import com.helpdesk.ticket.entity.Comment;
 import com.helpdesk.ticket.entity.Ticket;
 import com.helpdesk.ticket.entity.TicketStatus;
 import com.helpdesk.ticket.exception.ForbiddenException;
 import com.helpdesk.ticket.exception.NotFoundException;
+import com.helpdesk.ticket.repository.CommentRepository;
 import com.helpdesk.ticket.repository.TicketRepository;
 import com.helpdesk.ticket.security.AuthUser;
 import org.springframework.stereotype.Service;
@@ -15,13 +17,22 @@ import java.util.List;
 public class TicketService {
 
     private final TicketRepository ticketRepository;
+    private final CommentRepository commentRepository;
 
-    public TicketService(TicketRepository ticketRepository) {
+    public TicketService(TicketRepository ticketRepository, CommentRepository commentRepository) {
         this.ticketRepository = ticketRepository;
+        this.commentRepository = commentRepository;
     }
 
-    // Создание заявки текущим пользователем.
+    // Обычный пользователь создает новый вопрос в ленте.
     public TicketResponse create(CreateTicketRequest request, AuthUser user) {
+        if (user.isAdmin()) {
+            throw new ForbiddenException("Администратор не может создавать вопросы");
+        }
+        if (user.banned()) {
+            throw new ForbiddenException("Заблокированный пользователь не может создавать вопросы");
+        }
+
         Ticket ticket = Ticket.builder()
                 .title(request.title())
                 .description(request.description())
@@ -32,67 +43,110 @@ public class TicketService {
         return map(ticketRepository.save(ticket));
     }
 
-    public TicketResponse getById(Long id, AuthUser user) {
-        Ticket ticket = getTicket(id);
-        if (!user.isAdmin() && !ticket.getAuthorId().equals(user.userId())) {
-            throw new ForbiddenException("Недостаточно прав для просмотра заявки");
-        }
-        return map(ticket);
-    }
-
-    public List<TicketResponse> getByUser(Long userId, AuthUser currentUser) {
-        if (!currentUser.isAdmin() && !currentUser.userId().equals(userId)) {
-            throw new ForbiddenException("Недостаточно прав для просмотра заявок пользователя");
-        }
-        return ticketRepository.findByAuthorId(userId).stream().map(this::map).toList();
-    }
-
-    public List<TicketResponse> getAll(AuthUser user) {
-        if (!user.isAdmin()) {
-            throw new ForbiddenException("Только администратор может просматривать все заявки");
-        }
+    public List<TicketResponse> getFeed() {
         return ticketRepository.findAll().stream().map(this::map).toList();
     }
 
-    // Администратор меняет любой статус, пользователь может только закрыть свою заявку.
+    public TicketResponse getById(Long id) {
+        return map(getTicket(id));
+    }
+
+    public List<TicketResponse> getByUser(Long userId) {
+        return ticketRepository.findByAuthorId(userId).stream().map(this::map).toList();
+    }
+
+    public List<TicketResponse> getAllForAdmin(AuthUser user) {
+        requireAdmin(user);
+        return ticketRepository.findAll().stream().map(this::map).toList();
+    }
+
+    // Автор может менять только свой вопрос, админ - любой.
     public TicketResponse updateStatus(Long id, UpdateStatusRequest request, AuthUser user) {
         Ticket ticket = getTicket(id);
 
-        if (user.isAdmin()) {
-            ticket.setStatus(request.status());
-        } else {
-            if (!ticket.getAuthorId().equals(user.userId())) {
-                throw new ForbiddenException("Можно менять только свою заявку");
-            }
-            if (request.status() != TicketStatus.CLOSED) {
-                throw new ForbiddenException("Пользователь может только закрыть заявку");
-            }
-            ticket.setStatus(TicketStatus.CLOSED);
+        if (!user.isAdmin() && !ticket.getAuthorId().equals(user.userId())) {
+            throw new ForbiddenException("Недостаточно прав для изменения статуса");
         }
 
+        ticket.setStatus(request.status());
         return map(ticketRepository.save(ticket));
     }
 
+    public void deleteQuestion(Long id, AuthUser user) {
+        requireAdmin(user);
+        Ticket ticket = getTicket(id);
+        ticketRepository.delete(ticket);
+    }
+
     public TicketStatisticsResponse statistics(AuthUser user) {
-        if (!user.isAdmin()) {
-            throw new ForbiddenException("Только администратор может смотреть статистику");
+        requireAdmin(user);
+        long totalQuestions = ticketRepository.count();
+        long openQuestions = ticketRepository.countByStatus(TicketStatus.OPEN);
+        long discussionQuestions = ticketRepository.countByStatus(TicketStatus.DISCUSSION);
+        long resolvedQuestions = ticketRepository.countByStatus(TicketStatus.RESOLVED);
+        long closedQuestions = ticketRepository.countByStatus(TicketStatus.CLOSED);
+        long totalComments = commentRepository.count();
+
+        return new TicketStatisticsResponse(totalQuestions, openQuestions, discussionQuestions, resolvedQuestions, closedQuestions, totalComments);
+    }
+
+    // Пользовательские комментарии формируют обсуждение (thread) под вопросом.
+    public CommentResponse addComment(Long questionId, CreateCommentRequest request, AuthUser user) {
+        if (user.isAdmin()) {
+            throw new ForbiddenException("Администратор не может оставлять комментарии");
+        }
+        if (user.banned()) {
+            throw new ForbiddenException("Заблокированный пользователь не может оставлять комментарии");
         }
 
-        return new TicketStatisticsResponse(
-                ticketRepository.count(),
-                ticketRepository.countByStatus(TicketStatus.OPEN),
-                ticketRepository.countByStatus(TicketStatus.IN_PROGRESS),
-                ticketRepository.countByStatus(TicketStatus.RESOLVED),
-                ticketRepository.countByStatus(TicketStatus.CLOSED)
-        );
+        getTicket(questionId);
+
+        Comment comment = Comment.builder()
+                .questionId(questionId)
+                .authorId(user.userId())
+                .text(request.text())
+                .build();
+
+        Ticket question = getTicket(questionId);
+        if (question.getStatus() == TicketStatus.OPEN) {
+            question.setStatus(TicketStatus.DISCUSSION);
+            ticketRepository.save(question);
+        }
+
+        return map(commentRepository.save(comment));
+    }
+
+    public List<CommentResponse> getComments(Long questionId) {
+        getTicket(questionId);
+        return commentRepository.findByQuestionIdOrderByCreatedAtAsc(questionId).stream().map(this::map).toList();
+    }
+
+    public void deleteComment(Long commentId, AuthUser user) {
+        requireAdmin(user);
+        Comment comment = commentRepository.findById(commentId)
+                .orElseThrow(() -> new NotFoundException("Комментарий не найден"));
+        comment.setDeleted(true);
+        comment.setText("Комментарий удален модератором");
+        commentRepository.save(comment);
+    }
+
+    private void requireAdmin(AuthUser user) {
+        if (!user.isAdmin()) {
+            throw new ForbiddenException("Недостаточно прав");
+        }
     }
 
     private Ticket getTicket(Long id) {
         return ticketRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Заявка не найдена"));
+                .orElseThrow(() -> new NotFoundException("Вопрос не найден"));
     }
 
     private TicketResponse map(Ticket t) {
-        return new TicketResponse(t.getId(), t.getTitle(), t.getDescription(), t.getStatus(), t.getAuthorId(), t.getAssignedToId(), t.getCreatedAt(), t.getUpdatedAt());
+        long commentsCount = commentRepository.countByQuestionId(t.getId());
+        return new TicketResponse(t.getId(), t.getTitle(), t.getDescription(), t.getStatus(), t.getAuthorId(), t.getCreatedAt(), t.getUpdatedAt(), commentsCount);
+    }
+
+    private CommentResponse map(Comment c) {
+        return new CommentResponse(c.getId(), c.getQuestionId(), c.getAuthorId(), c.getText(), c.isDeleted(), c.getCreatedAt(), c.getUpdatedAt());
     }
 }

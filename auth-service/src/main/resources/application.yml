@@ -1,4 +1,4 @@
-﻿server:
+server:
   port: 8081
 
 spring:
@@ -16,5 +16,5 @@ spring:
 
 app:
   jwt:
-    secret: ${JWT_SECRET:helpdesk-super-secret-key-helpdesk-super-secret-key}
+    secret: ${JWT_SECRET:helpdesk-local-secret-key}
     expiration-ms: 86400000

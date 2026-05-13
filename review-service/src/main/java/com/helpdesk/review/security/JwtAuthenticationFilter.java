@@ -1,4 +1,5 @@
 package com.helpdesk.review.security;
+
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
@@ -11,23 +12,36 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+
 import java.io.IOException;
 import java.util.List;
+
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
- private final JwtService jwtService;
- public JwtAuthenticationFilter(JwtService jwtService){this.jwtService=jwtService;}
- @Override protected void doFilterInternal(HttpServletRequest request,HttpServletResponse response,FilterChain filterChain) throws ServletException, IOException {
-  String header=request.getHeader("Authorization");
-  if(header!=null && header.startsWith("Bearer ")){
-   try{
-    Claims c=jwtService.parseToken(header.substring(7));
-    AuthUser user=new AuthUser(c.get("userId", Long.class),c.getSubject(),c.get("role",String.class));
-    var auth=new UsernamePasswordAuthenticationToken(user,null,List.of(new SimpleGrantedAuthority("ROLE_"+user.role())));
-    auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-    SecurityContextHolder.getContext().setAuthentication(auth);
-   }catch (JwtException ignored){SecurityContextHolder.clearContext();}
-  }
-  filterChain.doFilter(request,response);
- }
+
+    private final JwtService jwtService;
+
+    public JwtAuthenticationFilter(JwtService jwtService) {
+        this.jwtService = jwtService;
+    }
+
+    @Override
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+            throws ServletException, IOException {
+        String header = request.getHeader("Authorization");
+        if (header != null && header.startsWith("Bearer ")) {
+            try {
+                Claims c = jwtService.parseToken(header.substring(7));
+                Boolean banned = c.get("banned", Boolean.class);
+                AuthUser user = new AuthUser(c.get("userId", Long.class), c.getSubject(), c.get("role", String.class), Boolean.TRUE.equals(banned));
+                var auth = new UsernamePasswordAuthenticationToken(user, null,
+                        List.of(new SimpleGrantedAuthority("ROLE_" + user.role())));
+                auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                SecurityContextHolder.getContext().setAuthentication(auth);
+            } catch (JwtException ignored) {
+                SecurityContextHolder.clearContext();
+            }
+        }
+        filterChain.doFilter(request, response);
+    }
 }

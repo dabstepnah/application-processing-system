@@ -1,2 +1,9 @@
 package com.helpdesk.ticket.entity;
-public enum TicketStatus { OPEN, IN_PROGRESS, RESOLVED, CLOSED }
+
+// Статусы вопроса в UniThread.
+public enum TicketStatus {
+    OPEN,
+    DISCUSSION,
+    RESOLVED,
+    CLOSED
+}

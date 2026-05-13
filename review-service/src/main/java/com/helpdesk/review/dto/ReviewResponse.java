@@ -1,3 +1,14 @@
 package com.helpdesk.review.dto;
+
 import java.time.Instant;
-public record ReviewResponse(Long id,Long authorId,Long targetUserId,Integer rating,String comment,Instant createdAt) {}
+
+public record ReviewResponse(
+        Long reviewId,
+        Long authorId,
+        String authorUsername,
+        Long targetUserId,
+        Integer rating,
+        String comment,
+        Instant createdAt
+) {
+}

@@ -1,100 +1,81 @@
-﻿# HelpDesk CI/CD Demo Backend
+# UniThread
 
-Проект для курсовой работы: микросервисная система HelpDesk для демонстрации CI/CD пайплайна и автодеплоя в Kubernetes.
+Микросервисная Q&A-платформа для студентов университета с обсуждениями, рейтингом пользователей и административной модерацией.
+
+## Роли
+
+- `USER` — публикует вопросы, участвует в обсуждениях, оставляет отзывы и оценки.
+- `ADMIN` — модерирует пользователей, вопросы, комментарии и отзывы.
+
+## Возможности USER
+
+- Регистрация и вход
+- Лента вопросов
+- Создание вопроса
+- Просмотр страницы вопроса и обсуждения
+- Комментирование вопросов
+- Просмотр профилей пользователей
+- Оценка и отзыв другим пользователям
+
+## Возможности ADMIN
+
+- Просмотр пользователей
+- Бан и разбан пользователей
+- Просмотр всех вопросов
+- Закрытие и удаление вопросов
+- Удаление комментариев
+- Удаление отзывов
+- Просмотр статистики
 
 ## Состав микросервисов
 
-- `auth-service` - регистрация, авторизация, JWT, роли, управление пользователями.
-- `ticket-service` - создание и обработка заявок.
-- `review-service` - отзывы и расчет рейтинга пользователей.
+- `auth-service` — пользователи, роли, JWT, бан/разбан.
+- `ticket-service` — в текущей версии выполняет роль `question-service` (вопросы и обсуждения).
+- `review-service` — рейтинг и отзывы пользователей.
+- `frontend` — веб-интерфейс UniThread.
 
 ## Стек
 
-- Java 17
-- Spring Boot 3
-- Spring Web, Spring Data JPA, Spring Security
+- Java 17, Spring Boot 3, Spring Security, JPA
 - PostgreSQL
-- Maven
-- JWT (jjwt)
-- Docker, Docker Compose
+- React, TypeScript, Vite, TailwindCSS, Axios
+- Docker Compose
 
-## Запуск через Docker Compose
+## Локальный запуск
 
 ```bash
 docker compose up --build
 ```
 
-## Проверка health endpoints
+Frontend: `http://localhost:3000`
 
-```bash
-curl http://localhost:8081/health
-curl http://localhost:8082/health
-curl http://localhost:8083/health
-```
+## Администратор по умолчанию
 
-## Примеры curl
-
-Регистрация:
-
-```bash
-curl -X POST http://localhost:8081/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{"username":"user1","email":"user1@mail.local","password":"pass123"}'
-```
-
-Вход:
-
-```bash
-curl -X POST http://localhost:8081/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"username":"user1","password":"pass123"}'
-```
-
-Создание заявки:
-
-```bash
-curl -X POST http://localhost:8082/api/tickets \
-  -H "Authorization: Bearer <JWT_TOKEN>" \
-  -H "Content-Type: application/json" \
-  -d '{"title":"Не работает VPN","description":"Не подключается со вчерашнего дня"}'
-```
-
-Просмотр заявок пользователя:
-
-```bash
-curl http://localhost:8082/api/tickets/user/1 \
-  -H "Authorization: Bearer <JWT_TOKEN>"
-```
-
-Создание отзыва:
-
-```bash
-curl -X POST http://localhost:8083/api/reviews \
-  -H "Authorization: Bearer <JWT_TOKEN>" \
-  -H "Content-Type: application/json" \
-  -d '{"targetUserId":2,"rating":5,"comment":"Быстро помог с проблемой"}'
-```
-
-Получение рейтинга:
-
-```bash
-curl http://localhost:8083/api/reviews/user/2/rating \
-  -H "Authorization: Bearer <JWT_TOKEN>"
-```
-
-Бан пользователя администратором:
-
-```bash
-curl -X PATCH http://localhost:8081/api/admin/users/2/ban \
-  -H "Authorization: Bearer <ADMIN_JWT_TOKEN>"
-```
-
-Дефолтный администратор:
-
+- email: `admin@unithread.local`
 - username: `admin`
 - password: `admin123`
-- email: `admin@helpdesk.local`
 
-## API таблица
+## Проверка API
 
-Сводная таблица endpoint'ов: [docs/api.md](docs/api.md)
+- `GET http://localhost:8081/health`
+- `GET http://localhost:8082/health`
+- `GET http://localhost:8083/health`
+
+Полная таблица endpoint'ов: [docs/api.md](docs/api.md)
+
+## Демо-сценарий для курсовой
+
+1. Зарегистрировать `user1` и `user2`.
+2. Войти под `user1`, создать вопрос.
+3. Войти под `user2`, открыть вопрос и оставить комментарий.
+4. В профиле `user1` поставить оценку и оставить отзыв.
+5. Войти под `admin` и выполнить модерацию: бан/разбан, удаление комментария и отзыва.
+
+## Важно про БД
+
+После рефакторинга может понадобиться очистка локального volume:
+
+```bash
+docker compose down -v
+docker compose up --build
+```

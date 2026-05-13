@@ -1,4 +1,4 @@
-﻿services:
+services:
   postgres:
     image: postgres:16-alpine
     container_name: helpdesk-postgres
@@ -10,19 +10,25 @@
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U helpdesk -d helpdesk_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   auth-service:
     build:
       context: ./auth-service
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     environment:
       DB_HOST: postgres
       DB_PORT: 5432
       DB_NAME: helpdesk_db
       DB_USER: helpdesk
       DB_PASSWORD: helpdesk
-      JWT_SECRET: helpdesk-super-secret-key-helpdesk-super-secret-key
+      JWT_SECRET: helpdesk-local-secret-key
     ports:
       - "8081:8081"
 
@@ -30,14 +36,15 @@
     build:
       context: ./ticket-service
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     environment:
       DB_HOST: postgres
       DB_PORT: 5432
       DB_NAME: helpdesk_db
       DB_USER: helpdesk
       DB_PASSWORD: helpdesk
-      JWT_SECRET: helpdesk-super-secret-key-helpdesk-super-secret-key
+      JWT_SECRET: helpdesk-local-secret-key
     ports:
       - "8082:8082"
 
@@ -45,16 +52,27 @@
     build:
       context: ./review-service
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     environment:
       DB_HOST: postgres
       DB_PORT: 5432
       DB_NAME: helpdesk_db
       DB_USER: helpdesk
       DB_PASSWORD: helpdesk
-      JWT_SECRET: helpdesk-super-secret-key-helpdesk-super-secret-key
+      JWT_SECRET: helpdesk-local-secret-key
     ports:
       - "8083:8083"
+
+  frontend:
+    build:
+      context: ./frontend
+    depends_on:
+      - auth-service
+      - ticket-service
+      - review-service
+    ports:
+      - "3000:80"
 
 volumes:
   postgres_data:

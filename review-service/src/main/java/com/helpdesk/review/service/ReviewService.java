@@ -20,8 +20,14 @@ public class ReviewService {
         this.reviewRepository = reviewRepository;
     }
 
-    // Пользователь не может оставлять отзыв самому себе.
+    // Рейтинг и отзыв доступны только обычному пользователю.
     public ReviewResponse create(CreateReviewRequest request, AuthUser author) {
+        if (author.isAdmin()) {
+            throw new ForbiddenException("Администратор не может оставлять отзывы и оценки");
+        }
+        if (author.banned()) {
+            throw new ForbiddenException("Заблокированный пользователь не может оставлять отзывы");
+        }
         if (author.userId().equals(request.targetUserId())) {
             throw new BadRequestException("Нельзя оставить отзыв самому себе");
         }
@@ -55,6 +61,6 @@ public class ReviewService {
     }
 
     private ReviewResponse map(Review review) {
-        return new ReviewResponse(review.getId(), review.getAuthorId(), review.getTargetUserId(), review.getRating(), review.getComment(), review.getCreatedAt());
+        return new ReviewResponse(review.getId(), review.getAuthorId(), null, review.getTargetUserId(), review.getRating(), review.getComment(), review.getCreatedAt());
     }
 }

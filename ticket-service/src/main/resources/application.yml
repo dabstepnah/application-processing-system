@@ -1,4 +1,4 @@
-﻿server:
+server:
   port: 8082
 spring:
   datasource:
@@ -11,4 +11,4 @@ spring:
     open-in-view: false
 app:
   jwt:
-    secret: ${JWT_SECRET:helpdesk-super-secret-key-helpdesk-super-secret-key}
+    secret: ${JWT_SECRET:helpdesk-local-secret-key}
