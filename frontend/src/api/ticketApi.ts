@@ -1,4 +1,4 @@
-import { createApiClient } from "./http";
+﻿import { createApiClient } from "./http";
 import type { Question, QuestionStatistics, QuestionStatus, Comment } from "../types";
 
 const questionApi = createApiClient("http://localhost:8082");
@@ -40,8 +40,12 @@ export const getQuestionStatistics = async () => {
   return data;
 };
 
-export const addComment = async (questionId: number, text: string) => {
-  const { data } = await questionApi.post<Comment>(`/api/questions/${questionId}/comments`, { text });
+// parentCommentId optional: null => корневой комментарий.
+export const addComment = async (questionId: number, text: string, parentCommentId?: number | null) => {
+  const { data } = await questionApi.post<Comment>(`/api/questions/${questionId}/comments`, {
+    text,
+    parentCommentId: parentCommentId ?? null
+  });
   return data;
 };
 

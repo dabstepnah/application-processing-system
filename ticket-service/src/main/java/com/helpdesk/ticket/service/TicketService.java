@@ -4,17 +4,22 @@ import com.helpdesk.ticket.dto.*;
 import com.helpdesk.ticket.entity.Comment;
 import com.helpdesk.ticket.entity.Ticket;
 import com.helpdesk.ticket.entity.TicketStatus;
+import com.helpdesk.ticket.exception.BadRequestException;
 import com.helpdesk.ticket.exception.ForbiddenException;
 import com.helpdesk.ticket.exception.NotFoundException;
 import com.helpdesk.ticket.repository.CommentRepository;
 import com.helpdesk.ticket.repository.TicketRepository;
 import com.helpdesk.ticket.security.AuthUser;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 
 @Service
 public class TicketService {
+
+    private static final Logger log = LoggerFactory.getLogger(TicketService.class);
 
     private final TicketRepository ticketRepository;
     private final CommentRepository commentRepository;
@@ -92,6 +97,10 @@ public class TicketService {
 
     // Пользовательские комментарии формируют обсуждение (thread) под вопросом.
     public CommentResponse addComment(Long questionId, CreateCommentRequest request, AuthUser user) {
+        // Временная диагностическая запись для проверки контекста пользователя при создании комментария.
+        log.info("Add comment request: questionId={}, userId={}, username={}, role={}, parentCommentId={}",
+                questionId, user.userId(), user.username(), user.role(), request.parentCommentId());
+
         if (user.isAdmin()) {
             throw new ForbiddenException("Администратор не может оставлять комментарии");
         }
@@ -101,9 +110,23 @@ public class TicketService {
 
         getTicket(questionId);
 
+        Long parentId = request.parentCommentId();
+        if (parentId != null) {
+            Comment parent = commentRepository.findById(parentId)
+                    .orElseThrow(() -> new BadRequestException("Родительский комментарий не найден"));
+            if (!parent.getQuestionId().equals(questionId)) {
+                throw new BadRequestException("Родительский комментарий относится к другому вопросу");
+            }
+            if (parent.isDeleted()) {
+                throw new BadRequestException("Нельзя отвечать на удаленный комментарий");
+            }
+        }
+
         Comment comment = Comment.builder()
                 .questionId(questionId)
                 .authorId(user.userId())
+                .authorUsername(user.username())
+                .parentCommentId(parentId)
                 .text(request.text())
                 .build();
 
@@ -147,6 +170,22 @@ public class TicketService {
     }
 
     private CommentResponse map(Comment c) {
-        return new CommentResponse(c.getId(), c.getQuestionId(), c.getAuthorId(), c.getText(), c.isDeleted(), c.getCreatedAt(), c.getUpdatedAt());
+        String authorUsername = c.getAuthorUsername();
+        if (authorUsername == null || authorUsername.isBlank()) {
+            // Обратная совместимость со старыми строками, где username мог отсутствовать.
+            authorUsername = "Пользователь #" + c.getAuthorId();
+        }
+
+        return new CommentResponse(
+                c.getId(),
+                c.getQuestionId(),
+                c.getAuthorId(),
+                authorUsername,
+                c.getText(),
+                c.getParentCommentId(),
+                c.isDeleted(),
+                c.getCreatedAt(),
+                c.getUpdatedAt()
+        );
     }
 }

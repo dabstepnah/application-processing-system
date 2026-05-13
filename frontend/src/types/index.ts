@@ -1,4 +1,4 @@
-export type Role = "USER" | "ADMIN";
+﻿export type Role = "USER" | "ADMIN";
 
 export interface AuthResponse {
   token: string;
@@ -45,7 +45,9 @@ export interface Comment {
   id: number;
   questionId: number;
   authorId: number;
+  authorUsername: string;
   text: string;
+  parentCommentId: number | null;
   deleted: boolean;
   createdAt: string;
   updatedAt: string;

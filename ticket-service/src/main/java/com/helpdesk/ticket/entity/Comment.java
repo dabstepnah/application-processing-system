@@ -24,6 +24,13 @@ public class Comment {
     @Column(name = "author_id", nullable = false)
     private Long authorId;
 
+    // Делаем поле nullable для мягкой миграции со старой схемы, где колонки могло не быть.
+    @Column(name = "author_username")
+    private String authorUsername;
+
+    @Column(name = "parent_comment_id")
+    private Long parentCommentId;
+
     @Column(nullable = false, length = 2000)
     private String text;
 
