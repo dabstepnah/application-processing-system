@@ -4,6 +4,7 @@ package com.helpdesk.ticket.entity;
 public enum TicketStatus {
     OPEN,
     DISCUSSION,
+    SOLVED,
     RESOLVED,
     CLOSED
 }

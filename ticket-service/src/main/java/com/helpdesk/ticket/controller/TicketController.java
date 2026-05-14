@@ -27,8 +27,14 @@ public class TicketController {
     }
 
     @GetMapping({"/api/questions", "/api/tickets"})
-    public List<TicketResponse> getFeed() {
-        return ticketService.getFeed();
+    public List<TicketResponse> getFeed(@RequestParam(defaultValue = "newest") String sort) {
+        return ticketService.getFeed(sort);
+    }
+
+    @GetMapping("/api/questions/search")
+    public List<TicketResponse> search(@RequestParam(required = false) String query,
+                                       @RequestParam(defaultValue = "newest") String sort) {
+        return ticketService.search(query, sort);
     }
 
     @GetMapping({"/api/questions/{id}", "/api/tickets/{id}"})
@@ -46,6 +52,19 @@ public class TicketController {
                                        @Valid @RequestBody UpdateStatusRequest request,
                                        @AuthenticationPrincipal AuthUser user) {
         return ticketService.updateStatus(id, request, user);
+    }
+
+    @PostMapping("/api/questions/{questionId}/accept-answer/{commentId}")
+    public TicketResponse acceptAnswer(@PathVariable Long questionId,
+                                       @PathVariable Long commentId,
+                                       @AuthenticationPrincipal AuthUser user) {
+        return ticketService.acceptAnswer(questionId, commentId, user);
+    }
+
+    @DeleteMapping("/api/questions/{questionId}/accept-answer")
+    public TicketResponse clearAcceptedAnswer(@PathVariable Long questionId,
+                                              @AuthenticationPrincipal AuthUser user) {
+        return ticketService.clearAcceptedAnswer(questionId, user);
     }
 
     @GetMapping({"/api/admin/questions", "/api/admin/tickets"})
@@ -72,8 +91,15 @@ public class TicketController {
     }
 
     @GetMapping("/api/questions/{questionId}/comments")
-    public List<CommentResponse> getComments(@PathVariable Long questionId) {
-        return ticketService.getComments(questionId);
+    public List<CommentResponse> getComments(@PathVariable Long questionId,
+                                             @AuthenticationPrincipal AuthUser user) {
+        return ticketService.getComments(questionId, user);
+    }
+
+    @PostMapping("/api/comments/{commentId}/like")
+    public CommentLikeResponse toggleLike(@PathVariable Long commentId,
+                                          @AuthenticationPrincipal AuthUser user) {
+        return ticketService.toggleLike(commentId, user);
     }
 
     @DeleteMapping("/api/admin/comments/{commentId}")

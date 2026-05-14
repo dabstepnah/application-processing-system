@@ -10,6 +10,9 @@ public record CommentResponse(
         String text,
         Long parentCommentId,
         boolean deleted,
+        long likesCount,
+        boolean likedByCurrentUser,
+        boolean acceptedAnswer,
         Instant createdAt,
         Instant updatedAt
 ) {

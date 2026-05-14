@@ -19,14 +19,17 @@ export interface User {
   createdAt: string;
 }
 
-export type QuestionStatus = "OPEN" | "DISCUSSION" | "RESOLVED" | "CLOSED";
+export type QuestionStatus = "OPEN" | "DISCUSSION" | "SOLVED" | "RESOLVED" | "CLOSED";
 
 export interface Question {
   id: number;
   title: string;
   body: string;
+  tags: string[];
   status: QuestionStatus;
   authorId: number;
+  solved: boolean;
+  acceptedCommentId: number | null;
   createdAt: string;
   updatedAt: string;
   commentsCount: number;
@@ -49,8 +52,17 @@ export interface Comment {
   text: string;
   parentCommentId: number | null;
   deleted: boolean;
+  likesCount: number;
+  likedByCurrentUser: boolean;
+  acceptedAnswer: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface CommentLikeResponse {
+  commentId: number;
+  likesCount: number;
+  likedByCurrentUser: boolean;
 }
 
 export interface Review {

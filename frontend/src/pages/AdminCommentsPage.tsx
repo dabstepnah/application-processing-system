@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { deleteComment, getAdminQuestions, getComments } from "../api/ticketApi";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
@@ -15,7 +15,9 @@ export const AdminCommentsPage = () => {
     setComments(all.flat());
   };
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => {
+    void load();
+  }, []);
 
   return (
     <Card title="Модерация комментариев">
@@ -24,8 +26,10 @@ export const AdminCommentsPage = () => {
         {comments.map((c) => (
           <div key={c.id} className="rounded-xl bg-appHover p-3">
             <p className="text-xs text-textSecondary">Вопрос #{c.questionId}, Автор #{c.authorId}</p>
-            <p className="mb-2">{c.text}</p>
-            <Button variant="danger" className="text-xs" onClick={() => deleteComment(c.id).then(load)}>Удалить</Button>
+            <p className="mb-2">{c.deleted ? "Комментарий удален модератором" : c.text}</p>
+            <Button variant="danger" className="text-xs" onClick={() => deleteComment(c.id).then(load)}>
+              Удалить
+            </Button>
           </div>
         ))}
       </div>

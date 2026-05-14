@@ -1,15 +1,20 @@
-﻿import { createApiClient } from "./http";
-import type { Question, QuestionStatistics, QuestionStatus, Comment } from "../types";
+import { createApiClient } from "./http";
+import type { Comment, CommentLikeResponse, Question, QuestionStatistics, QuestionStatus } from "../types";
 
 const questionApi = createApiClient("http://localhost:8082");
 
-export const createQuestion = async (title: string, body: string) => {
-  const { data } = await questionApi.post<Question>("/api/questions", { title, description: body });
+export const createQuestion = async (title: string, content: string) => {
+  const { data } = await questionApi.post<Question>("/api/questions", { title, content });
   return data;
 };
 
-export const getQuestions = async () => {
-  const { data } = await questionApi.get<Question[]>("/api/questions");
+export const getQuestions = async (params?: { sort?: "newest" | "popular" }) => {
+  const { data } = await questionApi.get<Question[]>("/api/questions", { params });
+  return data;
+};
+
+export const searchQuestions = async (query: string, sort: "newest" | "popular" = "newest") => {
+  const { data } = await questionApi.get<Question[]>("/api/questions/search", { params: { query, sort } });
   return data;
 };
 
@@ -28,6 +33,16 @@ export const updateQuestionStatus = async (id: number, status: QuestionStatus) =
   return data;
 };
 
+export const acceptAnswer = async (questionId: number, commentId: number) => {
+  const { data } = await questionApi.post<Question>(`/api/questions/${questionId}/accept-answer/${commentId}`);
+  return data;
+};
+
+export const clearAcceptedAnswer = async (questionId: number) => {
+  const { data } = await questionApi.delete<Question>(`/api/questions/${questionId}/accept-answer`);
+  return data;
+};
+
 export const deleteQuestion = async (id: number) => questionApi.delete(`/api/admin/questions/${id}`);
 
 export const getAdminQuestions = async () => {
@@ -40,7 +55,6 @@ export const getQuestionStatistics = async () => {
   return data;
 };
 
-// parentCommentId optional: null => корневой комментарий.
 export const addComment = async (questionId: number, text: string, parentCommentId?: number | null) => {
   const { data } = await questionApi.post<Comment>(`/api/questions/${questionId}/comments`, {
     text,
@@ -51,6 +65,11 @@ export const addComment = async (questionId: number, text: string, parentComment
 
 export const getComments = async (questionId: number) => {
   const { data } = await questionApi.get<Comment[]>(`/api/questions/${questionId}/comments`);
+  return data;
+};
+
+export const toggleCommentLike = async (commentId: number) => {
+  const { data } = await questionApi.post<CommentLikeResponse>(`/api/comments/${commentId}/like`);
   return data;
 };
 
